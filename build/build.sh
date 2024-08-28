@@ -2,14 +2,19 @@
 
 set -e
 
+XILINX_VITIS="/opt/Xilinx/Vitis"
 OSDIST=`grep '^ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 VERSION=`grep '^VERSION_ID=' /etc/os-release | awk -F= '{print $2}' | tr -d '"'`
 MAJOR=${VERSION%.*}
 BUILDDIR=$(readlink -f $(dirname ${BASH_SOURCE[0]}))
 CORE=`grep -c ^processor /proc/cpuinfo`
-CMAKE=cmake
-CMAKE_MAJOR_VERSION=`cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
+CORE=`expr $CORE / 4`
+CMAKE=/usr/bin/cmake
+CMAKE_MAJOR_VERSION=`/usr/bin/cmake --version | head -n 1 | awk '{print $3}' |awk -F. '{print $1}'`
 CPU=`uname -m`
+
+export PKG_CONFIG_PATH="/usr/local/lib64/pkgconfig:/usr/lib64/pkgconfig"
+export PATH="/usr/local/bin:${PATH}"
 
 if [[ $CMAKE_MAJOR_VERSION != 3 ]]; then
     if [[ $OSDIST == "centos" ]] || [[ $OSDIST == "amzn" ]] || [[ $OSDIST == "rhel" ]] || [[ $OSDIST == "fedora" ]] || [[ $OSDIST == "mariner" ]] || [[ $OSDIST == "almalinux" ]]; then
@@ -53,6 +58,7 @@ usage()
     echo "[-opt]                      Build optimized library only (default)"
     echo "[-edge]                     Build edge of x64.  Turns off opt and dbg"
     echo "[-hip]                      Enable hip bindings"
+    echo "[-nohip]                    Disable hip bindings"
     echo "[-noalveo]                  Disable bundling of Alveo Linux drivers"
     echo "[-disable-werror]           Disable compilation with warnings as error"
     echo "[-nocmake]                  Skip CMake call"
@@ -67,6 +73,8 @@ usage()
     echo "[-j <n>]                    Compile parallel (default: system cores)"
     echo "[-ccache]                   Build using RDI's compile cache"
     echo "[-toolchain <file>]         Extra toolchain file to configure CMake"
+    echo "[-gcc]                      Build with system-installed GCC (default)"
+    echo "[-clang]                    Build with system-installed Clang"
     echo "[-driver]                   Include building driver code"
     echo "[-checkpatch]               Run checkpatch.pl on driver code"
     echo "[-verbose]                  Turn on verbosity when compiling"
@@ -100,6 +108,8 @@ opt=1
 dbg=1
 edge=0
 nocmake=0
+gcc_build=1
+clang_build=0
 init_submodule=1
 nobuild=0
 noctest=0
@@ -107,12 +117,12 @@ noert=0
 static_boost=""
 ertbsp=""
 ertfw=""
-werror=1
+werror=0
 alveo=1
-xrt_install_prefix="/opt/xilinx"
-cmake_flags="-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+xrt_install_prefix="/opt/Xilinx"
+cmake_flags=" -DCMAKE_VERBOSE_MAKEFILE:BOOL=ON"
 
-while [ $# -gt 0 ]; do
+while [ $# -gt 0 ] ; do
     case "$1" in
         -help)
             usage
@@ -134,6 +144,16 @@ while [ $# -gt 0 ]; do
             opt=0
             shift
             ;;
+        -gcc)
+            gcc_build=1
+            clang_build=0
+            shift
+            ;;
+        -clang)
+            gcc_build=0
+            clang_build=1
+            shift
+            ;;
         -ertbsp)
             shift
             ertbsp=$1
@@ -153,6 +173,10 @@ while [ $# -gt 0 ]; do
         -hip)
             shift
             cmake_flags+=" -DXRT_ENABLE_HIP=ON"
+            ;;
+        -nohip)
+            shift
+            cmake_flags+=" -DXRT_ENABLE_HIP=OFF"
             ;;
 	-noalveo)
             shift
@@ -258,6 +282,14 @@ if [[ $alveo == 1 ]]; then
     cmake_flags+=" -DXRT_DKMS_ALVEO=ON"
 fi
 
+if [[ $gcc_build == 1 ]] ; then
+  cmake_flags+=" -DCMAKE_C_COMPILER=/usr/bin/gcc"
+  cmake_flags+=" -DCMAKE_CXX_COMPILER=/usr/bin/g++"
+elif [[ $clang_build == 1 ]] ; then
+  cmake_flags+=" -DCMAKE_C_COMPILER=/usr/bin/clang"
+  cmake_flags+=" -DCMAKE_CXX_COMPILER=/usr/bin/clang++"
+fi
+
 here=$PWD
 cd $BUILDDIR
 
@@ -322,7 +354,7 @@ if [[ -z ${XILINX_VITIS:+x} ]] || [[ ! -d ${XILINX_VITIS} ]]; then
     fi
 fi
 
-#If git modules config file exist then try to clone them
+# If git modules config file exist then try to clone them
 GIT_MODULES=$BUILDDIR/../.gitmodules
 if [[ -f "$GIT_MODULES" && $init_submodule == 1 ]]; then
     cd $BUILDDIR/../

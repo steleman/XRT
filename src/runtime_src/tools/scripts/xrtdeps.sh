@@ -296,7 +296,7 @@ fd_package_list()
      protobuf-static \
      python \
      python-pip \
-     python2-sphinx \
+     python3-sphinx \
      python3 \
      python3-pip \
      redhat-lsb \
@@ -681,10 +681,7 @@ install_hip()
         elif [ $MAJOR -ge 38 ]; then
             # From version 38 onwards, a version of HIP devel tools is bundled--
             # https://packages.fedoraproject.org/pkgs/rocclr/hip-devel/
-            yum install -y hip-devel
-        else
-            echo "Manual installation of HIP is required, please follow instructions on ROCm website--"
-            echo "https://rocm.docs.amd.com/projects/install-on-linux/en/latest/tutorial/install-overview.html"
+            dnf install -y hip-devel
         fi
     else
             echo "Manual installation of HIP is required, please follow instructions on ROCm website--"

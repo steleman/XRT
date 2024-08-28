@@ -8,6 +8,7 @@
 # XRT_VERSION_MINOR
 # XRT_VERSION_PATCH
 
+option(CMAKE_INCLUDE_DIRECTORIES_BEFORE ON)
 
 # --- PkgConfig ---
 INCLUDE (FindPkgConfig)
@@ -23,7 +24,7 @@ ENDIF(DRM_FOUND)
 
 
 # --- OpenCL header files ---
-pkg_check_modules(OPENCL REQUIRED OpenCL)
+pkg_check_modules(OPENCL REQUIRED opencl-12.3)
 IF(OPENCL_FOUND)
   MESSAGE(STATUS "Looking for OPENCL - found at ${OPENCL_PREFIX} ${OPENCL_VERSION} ${OPENCL_INCLUDEDIR}")
   INCLUDE_DIRECTORIES(${OPENCL_INCLUDEDIR})
@@ -56,8 +57,13 @@ if (${LINUX_FLAVOR} MATCHES "^centos")
     COMMAND awk "{print $4}" /etc/redhat-release
     COMMAND tr -d "\""
     OUTPUT_VARIABLE LINUX_VERSION
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-  )
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
+elseif (${LINUX_FLAVOR} MATCHES "^fedora")
+  execute_process(
+    COMMAND awk "{printf \"%s %s\", $1, $3}" /etc/fedora-release
+    COMMAND tr -d "\""
+    OUTPUT_VARIABLE LINUX_VERSION
+    OUTPUT_STRIP_TRAILING_WHITESPACE)
 else()
   execute_process(
     COMMAND awk -F= "$1==\"VERSION_ID\" {print $2}" /etc/os-release
@@ -71,6 +77,12 @@ execute_process(COMMAND ${UNAME} -r
   OUTPUT_VARIABLE LINUX_KERNEL_VERSION
   OUTPUT_STRIP_TRAILING_WHITESPACE
   )
+
+add_compile_options("-D_GNU_SOURCE")
+add_compile_options("-D_XOPEN_SOURCE=700")
+add_compile_options("-I/usr/local/include")
+add_compile_options("-L/usr/local/lib64")
+add_compile_options("-Wl,rpath -Wl,/usr/local/lib64")
 
 # Static linking creates and installs static tools and libraries. The
 # static libraries have system boost dependencies which must be

@@ -40,6 +40,7 @@
 #include "xrt/config.h"
 #include "xocl/api/icd/ocl_icd_bindings.h"
 #include "xocl/core/debug.h"
+#include "CL/cl_ext_xilinx.h"
 
 #define XOCL_UNUSED XRT_UNUSED
 

@@ -15,6 +15,8 @@ endif()
 
 message("-- CMAKE_INSTALL_PREFIX=${CMAKE_INSTALL_PREFIX}")
 
+option(CMAKE_INCLUDE_DIRECTORIES_BEFORE ON)
+include_directories(BEFORE SYSTEM "/usr/local/include")
 
 # Enable testing for this directory and below.  This command should be
 # in the source directory root because ctest expects to find a test
